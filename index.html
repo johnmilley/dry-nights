@@ -35,6 +35,7 @@
         <h1>Dry Nights</h1>
       </div>
       <div class="header-actions">
+        <button id="reset-open" class="icon-btn" aria-label="Reset app">🔄</button>
         <button id="theme-toggle" class="icon-btn" aria-label="Toggle dark or light mode">
           <span class="theme-icon-light">☀️</span>
           <span class="theme-icon-dark">🌑</span>
@@ -90,10 +91,13 @@
           <span class="status-emoji">💧</span> Wet
         </button>
       </div>
-      <label class="time-field" id="alarm-field">
-        <span>Alarm went off at</span>
-        <input type="time" id="alarm-time">
-      </label>
+      <div class="wakeups" id="wakeups-section">
+        <div class="wakeups-head">
+          <span>Wake-ups</span>
+          <button class="add-wakeup" id="btn-add-wakeup" aria-label="Add a wake-up">＋ Add</button>
+        </div>
+        <div id="wakeup-list"></div>
+      </div>
       <div class="sheet-actions">
         <button class="btn ghost" id="btn-clear">Clear entry</button>
         <button class="btn primary" id="btn-save">Save</button>
@@ -109,6 +113,20 @@
       <p class="sheet-sub">Track each night, build streaks, and celebrate progress. What's your name?</p>
       <input type="text" id="onboard-name" placeholder="Your name" maxlength="30" autocomplete="given-name">
       <button class="btn primary full" id="onboard-start">Let's go</button>
+    </div>
+  </div>
+
+  <!-- Reset confirmation -->
+  <div class="modal-backdrop hidden" id="reset-backdrop">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+      <div class="sheet-handle"></div>
+      <h2 id="reset-title">Start completely over?</h2>
+      <p class="sheet-sub">This permanently erases every night, your streaks, and your name. There is no undo.</p>
+      <input type="text" id="reset-confirm" placeholder='Type "RESET" to confirm' autocomplete="off" autocapitalize="characters">
+      <div class="sheet-actions">
+        <button class="btn ghost" id="reset-cancel">Cancel</button>
+        <button class="btn danger" id="btn-reset" disabled>Erase everything</button>
+      </div>
     </div>
   </div>
 

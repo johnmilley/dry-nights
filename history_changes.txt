@@ -1,0 +1,8 @@
+# History - Changes
+
+## 2026-06-11
+- provide more feedback options for streaks, etc. so that it doesn't get as stale.
+- add + button to add potentially more than one alaram to each night. each wake up needs to have a radio button for "woke independently" "work with help" "did not wake"
+- little icon could have two rain drops next to "Wet", and then multiple times next to the clock (or multiple clocks each with time)
+- remove previous dates and assume user is starting at day one
+- provide some option to reset app, but don't make it accidental

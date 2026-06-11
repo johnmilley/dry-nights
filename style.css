@@ -99,6 +99,11 @@ button {
   justify-content: center;
 }
 
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
 /* show only the icon for the mode you'd switch TO */
 [data-theme="light"] .theme-icon-light { display: none; }
 [data-theme="dark"] .theme-icon-dark { display: none; }
@@ -244,6 +249,13 @@ button {
 
 .load-sentinel { height: 1px; }
 
+.day-one-cap {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 18px 8px 28px;
+}
+
 /* ---------- Modal / sheet ---------- */
 .modal-backdrop {
   position: fixed;
@@ -261,6 +273,8 @@ button {
   background: var(--card);
   width: 100%;
   max-width: 560px;
+  max-height: 88vh;
+  overflow-y: auto;
   border-radius: 22px 22px 0 0;
   padding: 14px 20px calc(24px + env(safe-area-inset-bottom));
   animation: slide-up 0.22s ease;
@@ -319,25 +333,83 @@ button {
   color: var(--wet);
 }
 
-.time-field {
+/* ---------- Wake-ups (editor) ---------- */
+.wakeups { margin-bottom: 18px; }
+
+.wakeups-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.add-wakeup {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.wakeup-row {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px 14px;
-  margin-bottom: 18px;
-  font-size: 0.95rem;
+  padding: 10px 14px;
+  margin-bottom: 8px;
 }
 
-.time-field input {
+.wakeup-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wakeup-top input[type="time"] {
+  flex: 1;
   font: inherit;
   color: inherit;
   background: transparent;
   border: none;
   font-size: 1rem;
+}
+
+.wakeup-remove {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 0.9rem;
+  padding: 4px 6px;
+  border-radius: 8px;
+}
+
+.wakeup-radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 8px;
+}
+
+.wakeup-radios label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.wakeup-radios input[type="radio"] { accent-color: var(--accent); }
+
+.wakeup-empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0;
+  text-align: center;
+  padding: 6px 0;
 }
 
 .sheet-actions {
@@ -365,7 +437,30 @@ button {
   border: 1px solid var(--border);
 }
 
+.btn.danger {
+  flex: 1;
+  background: #e11d48;
+  color: #fff;
+}
+
+.btn.danger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .btn.full { width: 100%; }
+
+#reset-confirm {
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 13px 14px;
+  margin-bottom: 14px;
+}
 
 /* ---------- Onboarding ---------- */
 .sheet.onboard { text-align: center; }

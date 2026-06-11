@@ -9,7 +9,10 @@
   const STORE_KEY = 'bedwet.v1';
   const THEME_KEY = 'bedwet.theme';
 
-  /** @type {{user: {name: string, createdAt: string} | null, entries: Object.<string, {status: 'wet'|'dry', alarmTime: string|null}>}} */
+  /** A wake-up: when it happened and how the sleeper responded.
+   *  wake: 'self' (woke independently) | 'helped' (woke with help) | 'none' (did not wake) | null (not answered)
+   * @typedef {{time: string|null, wake: 'self'|'helped'|'none'|null}} WakeUp */
+  /** @type {{user: {name: string, createdAt: string} | null, entries: Object.<string, {status: 'wet'|'dry', wakeUps: WakeUp[]}>}} */
   let state = { user: null, entries: {} };
 
   function load() {
@@ -20,6 +23,14 @@
         if (parsed && typeof parsed === 'object') {
           state.user = parsed.user || null;
           state.entries = parsed.entries || {};
+          // Migrate v1 entries: single alarmTime -> wakeUps array.
+          for (const k in state.entries) {
+            const e = state.entries[k];
+            if (e && !Array.isArray(e.wakeUps)) {
+              e.wakeUps = e.alarmTime ? [{ time: e.alarmTime, wake: null }] : [];
+              delete e.alarmTime;
+            }
+          }
         }
       }
     } catch (e) {
@@ -106,20 +117,76 @@
     return { current, best, totalDry, dry30 };
   }
 
+  // Message pools so the feedback doesn't go stale. The pick is seeded by the
+  // date + streak, so it rotates day to day but stays put within a day.
+  const ENCOURAGEMENT_POOLS = {
+    fresh: [
+      'Log tonight to start your first streak! ⭐',
+      'Day one starts tonight — you can do this! 🌙',
+      'Your story begins with one logged night ✨',
+    ],
+    restart: [
+      'Every night is a fresh start. You\'ve got this! 💪',
+      'One damp night doesn\'t undo your progress 💙',
+      'Shake it off — tonight is a brand-new chance 🌅',
+      'Streaks come back stronger. Ready when you are! 🚀',
+    ],
+    one: [
+      'One dry night — a streak begins! 🌱',
+      'And so it begins: one dry night down! 🎬',
+      'First star collected — keep going! ⭐',
+    ],
+    two: [
+      '{n} nights in a row. Keep it going! 🙌',
+      'Two in a row — that\'s a pattern forming 📈',
+      'Double dry! Make it three tonight? 😄',
+    ],
+    few: [
+      'Three or more dry nights — amazing work! 🎉',
+      '{n} nights and your streak is heating up 🔥',
+      'Hat-trick territory: {n} dry nights! 🎩',
+    ],
+    several: [
+      '{n} nights strong. You\'re on fire! 🔥',
+      'Almost a full week — {n} nights! 🗓️',
+      '{n} in a row. Seriously impressive 💫',
+    ],
+    week: [
+      'A whole week (and more!) of dry nights! 🏆',
+      '{n} nights — you\'ve cleared the one-week mark! 🥇',
+      'Seven-plus dry nights. Champion stuff! 🏅',
+    ],
+    fortnight: [
+      '{n} nights! That\'s incredible dedication! 🌟',
+      'Two weeks and counting — {n} nights! 🚀',
+      '{n} dry nights. You\'re unstoppable ⚡',
+    ],
+    legend: [
+      '{n} nights dry. Absolutely legendary! 👑',
+      'A month-class streak — {n} nights! 🏰',
+      '{n} nights! They\'ll write songs about this 🎶',
+    ],
+  };
+
+  function pickSeeded(pool, seed) {
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+    return pool[h % pool.length];
+  }
+
   function encouragementFor(stats) {
     const n = stats.current;
-    if (n === 0) {
-      return stats.totalDry > 0
-        ? 'Every night is a fresh start. You\'ve got this! 💪'
-        : 'Log tonight to start your first streak! ⭐';
-    }
-    if (n === 1) return 'One dry night — a streak begins! 🌱';
-    if (n < 3) return n + ' nights in a row. Keep it going! 🙌';
-    if (n < 5) return 'Three or more dry nights — amazing work! 🎉';
-    if (n < 7) return n + ' nights strong. You\'re on fire! 🔥';
-    if (n < 14) return 'A whole week (and more!) of dry nights! 🏆';
-    if (n < 30) return n + ' nights! That\'s incredible dedication! 🌟';
-    return n + ' nights dry. Absolutely legendary! 👑';
+    let pool;
+    if (n === 0) pool = stats.totalDry > 0 ? ENCOURAGEMENT_POOLS.restart : ENCOURAGEMENT_POOLS.fresh;
+    else if (n === 1) pool = ENCOURAGEMENT_POOLS.one;
+    else if (n < 3) pool = ENCOURAGEMENT_POOLS.two;
+    else if (n < 5) pool = ENCOURAGEMENT_POOLS.few;
+    else if (n < 7) pool = ENCOURAGEMENT_POOLS.several;
+    else if (n < 14) pool = ENCOURAGEMENT_POOLS.week;
+    else if (n < 30) pool = ENCOURAGEMENT_POOLS.fortnight;
+    else pool = ENCOURAGEMENT_POOLS.legend;
+    const msg = pickSeeded(pool, dateKey(daysAgo(0)) + ':' + n);
+    return msg.replace('{n}', n);
   }
 
   function renderStats() {
@@ -139,6 +206,15 @@
   const dayList = document.getElementById('day-list');
   const PAGE_SIZE = 30;
   let daysLoaded = 0;
+  let allLoaded = false;
+
+  // The list starts at the user's day one (signup date, or earliest entry if
+  // somehow older) — no endless scroll into dates before they started.
+  function dayOneKey() {
+    let k = state.user ? dateKey(new Date(state.user.createdAt)) : dateKey(daysAgo(0));
+    for (const ek in state.entries) if (ek < k) k = ek;
+    return k;
+  }
 
   function dayRow(offset) {
     const d = daysAgo(offset);
@@ -154,16 +230,18 @@
       : WEEKDAYS[d.getDay()];
     const sub = MONTHS[d.getMonth()] + ' ' + d.getDate();
 
-    const alarm = entry && entry.alarmTime ? formatTime12(entry.alarmTime) : null;
+    const times = (entry && entry.wakeUps ? entry.wakeUps : [])
+      .map((w) => formatTime12(w.time))
+      .filter(Boolean);
 
     btn.innerHTML =
       '<div class="day-date">' +
         '<div class="day-name">' + name + '</div>' +
         '<div class="day-sub">' + sub + '</div>' +
       '</div>' +
-      (alarm ? '<div class="day-alarm">⏰ ' + alarm + '</div>' : '') +
+      (times.length ? '<div class="day-alarm">⏰ ' + times.join(' · ') + '</div>' : '') +
       (entry
-        ? '<span class="badge ' + entry.status + '">' + (entry.status === 'dry' ? '☀️ Dry' : '💧 Wet') + '</span>'
+        ? '<span class="badge ' + entry.status + '">' + (entry.status === 'dry' ? '☀️ Dry' : '💧💧 Wet') + '</span>'
         : '<span class="badge none">＋ Log</span>');
 
     btn.addEventListener('click', () => openEditor(key));
@@ -171,10 +249,14 @@
   }
 
   function appendDays() {
+    if (allLoaded) return false;
+    const startKey = dayOneKey();
     const frag = document.createDocumentFragment();
     const end = daysLoaded + PAGE_SIZE;
-    for (let i = daysLoaded; i < end; i++) {
+    let i = daysLoaded;
+    for (; i < end; i++) {
       const d = daysAgo(i);
+      if (dateKey(d) < startKey) { allLoaded = true; break; }
       // Month header at today and at every month boundary while scrolling back.
       if (i === 0 || d.getMonth() !== daysAgo(i - 1).getMonth()) {
         const h = document.createElement('div');
@@ -184,15 +266,23 @@
       }
       frag.appendChild(dayRow(i));
     }
-    daysLoaded = end;
+    if (allLoaded) {
+      const cap = document.createElement('div');
+      cap.className = 'day-one-cap';
+      cap.textContent = '🌱 Day one — this is where your story starts';
+      frag.appendChild(cap);
+    }
+    daysLoaded = i;
     dayList.appendChild(frag);
+    return true;
   }
 
   function refreshList() {
     const count = daysLoaded;
     daysLoaded = 0;
+    allLoaded = false;
     dayList.innerHTML = '';
-    while (daysLoaded < count) appendDays();
+    while (daysLoaded < count && appendDays()) { /* re-render loaded pages */ }
   }
 
   // Infinite scroll
@@ -206,9 +296,73 @@
   const editorBackdrop = document.getElementById('editor-backdrop');
   const btnDry = document.getElementById('btn-dry');
   const btnWet = document.getElementById('btn-wet');
-  const alarmInput = document.getElementById('alarm-time');
+  const wakeupList = document.getElementById('wakeup-list');
   let editingKey = null;
   let editingStatus = null;
+  /** @type {WakeUp[]} */
+  let editingWakeUps = [];
+
+  const WAKE_OPTIONS = [
+    ['self', 'Woke independently'],
+    ['helped', 'Woke with help'],
+    ['none', 'Did not wake'],
+  ];
+
+  function renderWakeUps() {
+    wakeupList.innerHTML = '';
+    if (!editingWakeUps.length) {
+      const hint = document.createElement('p');
+      hint.className = 'wakeup-empty';
+      hint.textContent = 'No wake-ups logged. Tap ＋ Add to record one.';
+      wakeupList.appendChild(hint);
+      return;
+    }
+    editingWakeUps.forEach((w, i) => {
+      const row = document.createElement('div');
+      row.className = 'wakeup-row';
+
+      const top = document.createElement('div');
+      top.className = 'wakeup-top';
+      const clock = document.createElement('span');
+      clock.className = 'wakeup-clock';
+      clock.textContent = '⏰';
+      const time = document.createElement('input');
+      time.type = 'time';
+      time.value = w.time || '';
+      time.addEventListener('input', () => { w.time = time.value || null; });
+      const remove = document.createElement('button');
+      remove.className = 'wakeup-remove';
+      remove.setAttribute('aria-label', 'Remove this wake-up');
+      remove.textContent = '✕';
+      remove.addEventListener('click', () => {
+        editingWakeUps.splice(i, 1);
+        renderWakeUps();
+      });
+      top.append(clock, time, remove);
+
+      const radios = document.createElement('div');
+      radios.className = 'wakeup-radios';
+      WAKE_OPTIONS.forEach(([value, label]) => {
+        const lab = document.createElement('label');
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'wake-' + i;
+        input.value = value;
+        input.checked = w.wake === value;
+        input.addEventListener('change', () => { w.wake = value; });
+        lab.append(input, document.createTextNode(' ' + label));
+        radios.appendChild(lab);
+      });
+
+      row.append(top, radios);
+      wakeupList.appendChild(row);
+    });
+  }
+
+  document.getElementById('btn-add-wakeup').addEventListener('click', () => {
+    editingWakeUps.push({ time: null, wake: null });
+    renderWakeUps();
+  });
 
   function openEditor(key) {
     editingKey = key;
@@ -222,7 +376,9 @@
 
     const entry = state.entries[key];
     editingStatus = entry ? entry.status : null;
-    alarmInput.value = entry && entry.alarmTime ? entry.alarmTime : '';
+    editingWakeUps = (entry && entry.wakeUps ? entry.wakeUps : [])
+      .map((w) => ({ time: w.time || null, wake: w.wake || null }));
+    renderWakeUps();
     syncStatusButtons();
     editorBackdrop.classList.remove('hidden');
   }
@@ -240,6 +396,26 @@
   btnDry.addEventListener('click', () => { editingStatus = 'dry'; syncStatusButtons(); });
   btnWet.addEventListener('click', () => { editingStatus = 'wet'; syncStatusButtons(); });
 
+  const DRY_TOASTS = [
+    '🎉 Dry night logged — great job!',
+    '☀️ Another dry one in the books!',
+    '⭐ Dry night saved. Nice work!',
+  ];
+  const DRY_STREAK_TOASTS = [
+    '🎉 {n} dry nights in a row!',
+    '🔥 Streak at {n} and climbing!',
+    '🙌 That makes {n} in a row!',
+  ];
+  const WET_TOASTS = [
+    'Logged. Tomorrow is a new chance 💙',
+    'Saved. Wet nights happen — keep going 💙',
+    'Got it. Tonight is a fresh page 🌙',
+  ];
+
+  function randomFrom(pool) {
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
   document.getElementById('btn-save').addEventListener('click', () => {
     if (!editingKey) return;
     if (!editingStatus) {
@@ -248,7 +424,9 @@
     }
     state.entries[editingKey] = {
       status: editingStatus,
-      alarmTime: alarmInput.value || null,
+      wakeUps: editingWakeUps
+        .filter((w) => w.time || w.wake)
+        .map((w) => ({ time: w.time || null, wake: w.wake || null })),
     };
     save();
     closeEditor();
@@ -257,10 +435,10 @@
     if (editingStatus === 'dry') {
       const stats = computeStats();
       showToast(stats.current > 1
-        ? '🎉 ' + stats.current + ' dry nights in a row!'
-        : '🎉 Dry night logged — great job!');
+        ? randomFrom(DRY_STREAK_TOASTS).replace('{n}', stats.current)
+        : randomFrom(DRY_TOASTS));
     } else {
-      showToast('Logged. Tomorrow is a new chance 💙');
+      showToast(randomFrom(WET_TOASTS));
     }
   });
 
@@ -297,12 +475,46 @@
     save();
     onboardBackdrop.classList.add('hidden');
     renderStats();
+    refreshList(); // day one is now set, so the list can cap itself
     showToast('Welcome, ' + state.user.name + '! 🌙');
   }
 
   document.getElementById('onboard-start').addEventListener('click', finishOnboard);
   document.getElementById('onboard-name').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') finishOnboard();
+  });
+
+  // ---------- Reset ----------
+
+  const resetBackdrop = document.getElementById('reset-backdrop');
+  const resetInput = document.getElementById('reset-confirm');
+  const resetBtn = document.getElementById('btn-reset');
+
+  function closeReset() {
+    resetBackdrop.classList.add('hidden');
+    resetInput.value = '';
+    resetBtn.disabled = true;
+  }
+
+  document.getElementById('reset-open').addEventListener('click', () => {
+    resetBackdrop.classList.remove('hidden');
+    resetInput.focus();
+  });
+
+  resetInput.addEventListener('input', () => {
+    // Typing the word is the safety latch against accidental resets.
+    resetBtn.disabled = resetInput.value.trim().toUpperCase() !== 'RESET';
+  });
+
+  resetBtn.addEventListener('click', () => {
+    if (resetBtn.disabled) return;
+    localStorage.removeItem(STORE_KEY);
+    location.reload(); // boots fresh into onboarding
+  });
+
+  document.getElementById('reset-cancel').addEventListener('click', closeReset);
+  resetBackdrop.addEventListener('click', (e) => {
+    if (e.target === resetBackdrop) closeReset();
   });
 
   // ---------- Theme ----------
