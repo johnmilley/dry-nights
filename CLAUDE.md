@@ -47,10 +47,11 @@ Everything lives in `localStorage` under `bedwet.v1`:
 ```
 
 Entry keys are **local** dates (an entry describes the night ending on that
-morning). `wake` records how that wake-up went: independently (`self`), with
-help (`helped`), or slept through (`none`). Old entries with a single
-`alarmTime` are migrated to a one-element `wakeUps` array on load. Theme is
-stored separately under `bedwet.theme`.
+morning). `wake` records how that wake-up went: independently (`self` 🙋),
+with help (`helped` 🤝), or slept through (`none` 😴) — the day row shows the
+icon after each wake-up time. Old entries with a single `alarmTime` are
+migrated to a one-element `wakeUps` array on load. Theme is stored separately
+under `bedwet.theme`.
 
 ## Behavior notes
 

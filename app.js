@@ -230,8 +230,9 @@
       : WEEKDAYS[d.getDay()];
     const sub = MONTHS[d.getMonth()] + ' ' + d.getDate();
 
+    // Each wake-up renders as "time icon" (either part optional): ⏰ 2:30 AM 🙋 · 4:15 AM 😴
     const times = (entry && entry.wakeUps ? entry.wakeUps : [])
-      .map((w) => formatTime12(w.time))
+      .map((w) => [formatTime12(w.time), WAKE_ICONS[w.wake]].filter(Boolean).join(' '))
       .filter(Boolean);
 
     btn.innerHTML =
@@ -241,7 +242,7 @@
       '</div>' +
       (times.length ? '<div class="day-alarm">⏰ ' + times.join(' · ') + '</div>' : '') +
       (entry
-        ? '<span class="badge ' + entry.status + '">' + (entry.status === 'dry' ? '☀️ Dry' : '💧💧 Wet') + '</span>'
+        ? '<span class="badge ' + entry.status + '">' + (entry.status === 'dry' ? '☀️ Dry' : '💧 Wet') + '</span>'
         : '<span class="badge none">＋ Log</span>');
 
     btn.addEventListener('click', () => openEditor(key));
@@ -302,10 +303,12 @@
   /** @type {WakeUp[]} */
   let editingWakeUps = [];
 
+  const WAKE_ICONS = { self: '🙋', helped: '🤝', none: '😴' };
+
   const WAKE_OPTIONS = [
-    ['self', 'Woke independently'],
-    ['helped', 'Woke with help'],
-    ['none', 'Did not wake'],
+    ['self', '🙋 Woke independently'],
+    ['helped', '🤝 Woke with help'],
+    ['none', '😴 Did not wake'],
   ];
 
   function renderWakeUps() {
