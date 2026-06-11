@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Dry Nights</title>
+  <meta name="description" content="A gentle nightly tracker with streaks and encouragement.">
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#101426">
+  <link rel="icon" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Dry Nights">
+
+  <script>
+    // Apply saved theme before first paint to avoid a flash
+    (function () {
+      var t = localStorage.getItem('bedwet.theme');
+      if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-icon">🌙</span>
+        <h1>Dry Nights</h1>
+      </div>
+      <div class="header-actions">
+        <button id="theme-toggle" class="icon-btn" aria-label="Toggle dark or light mode">
+          <span class="theme-icon-light">☀️</span>
+          <span class="theme-icon-dark">🌑</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- Greeting + stats -->
+    <section class="stats-card" id="stats-card">
+      <p class="greeting" id="greeting">Hi!</p>
+      <div class="streak-hero">
+        <div class="streak-flame" id="streak-flame">🔥</div>
+        <div class="streak-num" id="current-streak">0</div>
+        <div class="streak-label">night dry streak</div>
+      </div>
+      <p class="encouragement" id="encouragement"></p>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-value" id="best-streak">0</div>
+          <div class="stat-label">Best streak</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="dry-30">0</div>
+          <div class="stat-label">Dry, last 30</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="total-dry">0</div>
+          <div class="stat-label">Dry total</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Calendar list -->
+    <section class="day-list" id="day-list" aria-label="Nightly log"></section>
+    <div class="load-sentinel" id="load-sentinel"></div>
+
+  </main>
+
+  <!-- Day editor sheet -->
+  <div class="modal-backdrop hidden" id="editor-backdrop">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="editor-date">
+      <div class="sheet-handle"></div>
+      <h2 id="editor-date">Date</h2>
+      <p class="sheet-sub">How was the night?</p>
+      <div class="status-buttons">
+        <button class="status-btn dry" id="btn-dry">
+          <span class="status-emoji">☀️</span> Dry
+        </button>
+        <button class="status-btn wet" id="btn-wet">
+          <span class="status-emoji">💧</span> Wet
+        </button>
+      </div>
+      <label class="time-field" id="alarm-field">
+        <span>Alarm went off at</span>
+        <input type="time" id="alarm-time">
+      </label>
+      <div class="sheet-actions">
+        <button class="btn ghost" id="btn-clear">Clear entry</button>
+        <button class="btn primary" id="btn-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Onboarding -->
+  <div class="modal-backdrop hidden" id="onboard-backdrop">
+    <div class="sheet onboard" role="dialog" aria-modal="true">
+      <div class="onboard-icon">🌙</div>
+      <h2>Welcome to Dry Nights</h2>
+      <p class="sheet-sub">Track each night, build streaks, and celebrate progress. What's your name?</p>
+      <input type="text" id="onboard-name" placeholder="Your name" maxlength="30" autocomplete="given-name">
+      <button class="btn primary full" id="onboard-start">Let's go</button>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
