@@ -373,9 +373,22 @@ button {
   flex: 1;
   font: inherit;
   color: inherit;
-  background: transparent;
-  border: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
   font-size: 1rem;
+  cursor: pointer;
+}
+
+.wakeup-top input[type="time"].is-placeholder {
+  color: var(--muted);
+}
+
+.wakeup-top input[type="time"]:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .wakeup-remove {

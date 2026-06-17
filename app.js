@@ -121,50 +121,40 @@
   // date + streak, so it rotates day to day but stays put within a day.
   const ENCOURAGEMENT_POOLS = {
     fresh: [
-      'Log tonight to start your first streak! ⭐',
-      'Day one starts tonight — you can do this! 🌙',
-      'Your story begins with one logged night ✨',
+      'Log tonight to start a streak. 🌙',
+      'No streak yet — tonight counts.',
     ],
     restart: [
-      'Every night is a fresh start. You\'ve got this! 💪',
-      'One damp night doesn\'t undo your progress 💙',
-      'Shake it off — tonight is a brand-new chance 🌅',
-      'Streaks come back stronger. Ready when you are! 🚀',
+      'A fresh start tonight. 💙',
+      'Wet nights happen. Keep going.',
     ],
     one: [
-      'One dry night — a streak begins! 🌱',
-      'And so it begins: one dry night down! 🎬',
-      'First star collected — keep going! ⭐',
+      'One dry night. 🌱',
+      'One dry night logged.',
     ],
     two: [
-      '{n} nights in a row. Keep it going! 🙌',
-      'Two in a row — that\'s a pattern forming 📈',
-      'Double dry! Make it three tonight? 😄',
+      '{n} nights in a row.',
+      '{n} dry nights so far.',
     ],
     few: [
-      'Three or more dry nights — amazing work! 🎉',
-      '{n} nights and your streak is heating up 🔥',
-      'Hat-trick territory: {n} dry nights! 🎩',
+      '{n} dry nights in a row.',
+      '{n} nights and counting.',
     ],
     several: [
-      '{n} nights strong. You\'re on fire! 🔥',
-      'Almost a full week — {n} nights! 🗓️',
-      '{n} in a row. Seriously impressive 💫',
+      '{n} nights in a row.',
+      '{n} dry nights so far.',
     ],
     week: [
-      'A whole week (and more!) of dry nights! 🏆',
-      '{n} nights — you\'ve cleared the one-week mark! 🥇',
-      'Seven-plus dry nights. Champion stuff! 🏅',
+      '{n} dry nights — over a week. 🌙',
+      '{n} nights in a row.',
     ],
     fortnight: [
-      '{n} nights! That\'s incredible dedication! 🌟',
-      'Two weeks and counting — {n} nights! 🚀',
-      '{n} dry nights. You\'re unstoppable ⚡',
+      '{n} dry nights — over two weeks.',
+      '{n} nights in a row.',
     ],
     legend: [
-      '{n} nights dry. Absolutely legendary! 👑',
-      'A month-class streak — {n} nights! 🏰',
-      '{n} nights! They\'ll write songs about this 🎶',
+      '{n} dry nights — over a month. 🌙',
+      '{n} nights in a row.',
     ],
   };
 
@@ -198,7 +188,7 @@
     document.getElementById('encouragement').textContent = encouragementFor(stats);
     document.getElementById('streak-flame').classList.toggle('dim', stats.current === 0);
     document.getElementById('greeting').textContent =
-      state.user ? 'Hi, ' + state.user.name + '!' : 'Hi!';
+      state.user ? 'Hi, ' + state.user.name : 'Hi';
   }
 
   // ---------- Day list ----------
@@ -270,7 +260,7 @@
     if (allLoaded) {
       const cap = document.createElement('div');
       cap.className = 'day-one-cap';
-      cap.textContent = '🌱 Day one — this is where your story starts';
+      cap.textContent = '🌱 Day one';
       frag.appendChild(cap);
     }
     daysLoaded = i;
@@ -331,8 +321,14 @@
       clock.textContent = '⏰';
       const time = document.createElement('input');
       time.type = 'time';
-      time.value = w.time || '';
-      time.addEventListener('input', () => { w.time = time.value || null; });
+      // Show 11 PM as a visual hint, but don't record it until the user
+      // actually picks a time (placeholder, not saved data).
+      time.value = w.time || '23:00';
+      time.classList.toggle('is-placeholder', !w.time);
+      time.addEventListener('input', () => {
+        w.time = time.value || null;
+        time.classList.toggle('is-placeholder', !w.time);
+      });
       const remove = document.createElement('button');
       remove.className = 'wakeup-remove';
       remove.setAttribute('aria-label', 'Remove this wake-up');
@@ -400,19 +396,16 @@
   btnWet.addEventListener('click', () => { editingStatus = 'wet'; syncStatusButtons(); });
 
   const DRY_TOASTS = [
-    '🎉 Dry night logged — great job!',
-    '☀️ Another dry one in the books!',
-    '⭐ Dry night saved. Nice work!',
+    'Dry night logged. ☀️',
+    'Saved.',
   ];
   const DRY_STREAK_TOASTS = [
-    '🎉 {n} dry nights in a row!',
-    '🔥 Streak at {n} and climbing!',
-    '🙌 That makes {n} in a row!',
+    '{n} dry nights in a row.',
+    'Saved — streak at {n}.',
   ];
   const WET_TOASTS = [
-    'Logged. Tomorrow is a new chance 💙',
-    'Saved. Wet nights happen — keep going 💙',
-    'Got it. Tonight is a fresh page 🌙',
+    'Logged. 💙',
+    'Saved.',
   ];
 
   function randomFrom(pool) {

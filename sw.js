@@ -1,6 +1,6 @@
 /* Dry Nights service worker — cache-first for the app shell so it works offline. */
 
-const CACHE = 'drynights-v3';
+const CACHE = 'drynights-v4';
 const ASSETS = [
   './',
   './index.html',
